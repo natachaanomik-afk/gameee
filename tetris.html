@@ -1,0 +1,1220 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tetris Game</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1e3a8a 0%, #1f2937 100%);
+      overflow: hidden;
+    }
+    .container {
+      display: flex;
+      gap: 40px;
+      padding: 20px;
+      max-width: 1400px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .game-board {
+      position: relative;
+      width: 400px;
+      height: 800px;
+      background: #0f172a;
+      border: 3px solid #3b82f6;
+      box-shadow: 0 0 30px rgba(59, 130, 246, 0.8), inset 0 0 20px rgba(59, 130, 246, 0.1);
+      animation: boardPulse 3s ease-in-out infinite;
+    }
+    @keyframes boardPulse {
+      0%, 100% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.8), inset 0 0 20px rgba(59, 130, 246, 0.1); }
+      50% { box-shadow: 0 0 50px rgba(59, 130, 246, 1), inset 0 0 30px rgba(59, 130, 246, 0.2); }
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .info-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      color: #fff;
+      min-width: 220px;
+    }
+    .info-box {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 20px;
+      border-radius: 12px;
+      border: 2px solid #3b82f6;
+      backdrop-filter: blur(10px);
+      animation: slideIn 0.5s ease-out;
+    }
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    @keyframes slideUp {
+       from {
+         opacity: 0;
+         transform: translateY(20px);
+       }
+       to {
+         opacity: 1;
+         transform: translateY(0);
+       }
+     }
+    .info-box h3 {
+      color: #93c5fd;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .info-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #7dd3fc; /* เปลี่ยนจากเหลืองเป็นฟ้า/ซาย */
+      text-shadow: 0 0 10px rgba(125,211,252,0.25);
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn {
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    }
+    .btn:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+    }
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4);
+    }
+    .controls-help {
+      font-size: 12px;
+      color: #93c5fd;
+      line-height: 1.8;
+      background: rgba(59, 130, 246, 0.1);
+      padding: 12px;
+      border-radius: 6px;
+      border-left: 3px solid #3b82f6;
+    }
+    .stats-box {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    .stat-item {
+      flex: 1;
+      min-width: 90px;
+      background: rgba(251, 191, 36, 0.1);
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      text-align: center;
+    }
+    .stat-item small {
+      color: #fbbf24;
+      font-size: 11px;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .stat-item strong {
+      color: #fef3c7;
+      font-size: 18px;
+    }
+    /* เพิ่ม CSS สำหรับ overlays / modals */
+    .overlay-panel {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1300;
+    }
+    .overlay-panel.active { display: flex; }
+    .modal-card {
+      width: 90%;
+      max-width: 720px;
+      background: linear-gradient(180deg,#0b1220,#121827);
+      border-radius: 12px;
+      padding: 20px;
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    }
+    .modal-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:10px; }
+    .modal-close { background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer; }
+    .modal-body { font-size:14px;line-height:1.6;color:#dbeafe; max-height:60vh; overflow:auto; }
+    .settings-row { display:flex;align-items:center;gap:12px;margin-top:12px; }
+    .slider { width:100%; }
+    .small-btn { padding:8px 10px;border-radius:8px;border:0;background:#2563eb;color:#fff;cursor:pointer }
+    .link-btn { background:transparent;border:1px solid rgba(255,255,255,0.08);padding:8px 10px;border-radius:8px;color:#fff;cursor:pointer }
+
+    /* Main landing screen */
+    #main-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1400;
+      background: radial-gradient(1200px 600px at 10% 20%, rgba(59,130,246,0.14), transparent),
+                  radial-gradient(1000px 500px at 90% 80%, rgba(125,211,252,0.08), transparent),
+                  linear-gradient(180deg,#071027,#08142a 60%);
+      overflow: hidden;
+    }
+    .main-card {
+      text-align: center;
+      color: #fff;
+      padding: 36px;
+      border-radius: 16px;
+      backdrop-filter: blur(6px) saturate(120%);
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      transform: translateY(0);
+      animation: appearUp 0.6s ease-out;
+      width: min(720px, 88vw);
+    }
+    @keyframes appearUp { from { opacity: 0; transform: translateY(18px) scale(0.98); } to { opacity:1; transform: translateY(0) scale(1); } }
+    .main-title {
+      font-size: 44px;
+      letter-spacing: 6px;
+      margin-bottom: 8px;
+      font-weight: 800;
+      animation: glow 2.2s infinite ease-in-out;
+      background: linear-gradient(90deg,#7dd3fc 0%, #60a5fa 50%, #a78bfa 100%); /* เปลี่ยนเป็นโทนฟ้า-ม่วง */
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 12px 40px rgba(80,170,255,0.08));
+      position: relative;
+    }
+    /* ปรับแถบ shine ให้หยุดนิ่ง */
+    .main-title::after{
+      content:'';
+      position:absolute; left:0%; top:0; width:30%; height:100%;
+      background: linear-gradient(90deg, rgba(255,255,255,0.15), rgba(255,255,255,0.01), rgba(255,255,255,0.0));
+      transform: skewX(-20deg);
+      /* หยุด animation: ลบ animation shine ออก */
+    }
+    @keyframes shine { to { left: 120%; } }
+    @keyframes glow {
+      0% { text-shadow: 0 8px 30px rgba(255,209,102,0.08); transform: translateY(0); }
+      50% { text-shadow: 0 18px 50px rgba(255,209,102,0.18); transform: translateY(-3px); }
+      100% { text-shadow: 0 8px 30px rgba(255,209,102,0.08); transform: translateY(0); }
+    }
+    .main-sub { color: #cde7ff; opacity:0.9; margin-bottom:18px; }
+    .main-cta {
+      display:inline-flex;gap:12px;align-items:center;
+    }
+    .btn-cta {
+      background: linear-gradient(90deg,#7dd3fc,#60a5fa); /* โทนฟ้า -> สวยและคมชัดกว่าเหลือง */
+      border:0;padding:12px 20px;border-radius:10px;font-weight:800;cursor:pointer;color:#000;
+      box-shadow: 0 10px 30px rgba(255,130,100,0.14);
+      transform: translateZ(0);
+    }
+    .btn-secondary {
+      background:transparent;border:1px solid rgba(255,255,255,0.08);padding:10px 14px;border-radius:8px;color:#fff;
+    }
+
+    /* Floating decorative blocks */
+    .floating {
+      position: absolute;
+      width: 80px; height: 80px; opacity: 0.06;
+      background: linear-gradient(135deg,#7dd3fc,#60a5fa);
+      border-radius:12px; filter: blur(12px);
+      animation: floaty 6s ease-in-out infinite;
+      transform-origin: center;
+    }
+    .floating.two { width: 120px; height:120px; background: linear-gradient(135deg,#ffd166,#ff7b7b); animation-duration:7s; opacity:0.06 }
+    .floating.three { width:60px;height:60px;background:linear-gradient(135deg,#a78bfa,#f472b6); animation-duration:5.5s; opacity:0.05 }
+    @keyframes floaty {
+      0% { transform: translateY(0) rotate(0deg) scale(1); }
+      50% { transform: translateY(-18px) rotate(8deg) scale(1.05); }
+      100% { transform: translateY(0) rotate(0deg) scale(1); }
+    }
+
+    /* เพิ่ม CSS เพื่อเพิ่มความคมชัดและเอฟเฟกต์บนหน้า Main */
+    .main-card { position: relative; overflow: visible; }
+    /* เพิ่ม stroke & gradient text effect */
+    .main-title {
+      background: linear-gradient(90deg,#7dd3fc 0%, #60a5fa 50%, #a78bfa 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 12px 40px rgba(80,170,255,0.08));
+      position: relative;
+    }
+    /* shine bar */
+    .main-title::after{
+      content:'';
+      position:absolute; left:0%; top:0; width:30%; height:100%;
+      background: linear-gradient(90deg, rgba(255,255,255,0.15), rgba(255,255,255,0.01), rgba(255,255,255,0.0));
+      transform: skewX(-20deg);
+      /* หยุด animation: ลบ animation shine ออก */
+    }
+    @keyframes shine { to { left: 120%; } }
+
+    /* more dramatic floating decor */
+    .floating { opacity:0.09; filter: blur(18px); mix-blend-mode: screen; }
+    .floating.two { opacity:0.08; }
+    .floating.three { opacity:0.07; }
+
+    /* main particles canvas (behind card) */
+    #main-particles {
+      position: absolute;
+      inset: 0;
+      width:100%;
+      height:100%;
+      pointer-events:none;
+      z-index:1;
+    }
+    /* ensure card content above particles */
+    .main-card > * { position: relative; z-index: 2; }
+
+    /* เพิ่มปุ่มกลับหน้าหลักในขณะเล่น (controls) */
+    #home-btn { background: linear-gradient(90deg,#7CFC00,#00FFD5); color:#000; font-weight:800; }
+
+    /* เพิ่ม CSS/HTML เฉพาะส่วนที่เปลี่ยนแปลง (รวมไว้เพื่อให้ user รวมเข้ากับไฟล์เดิม) */
+    .main-bg-anim {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background: radial-gradient(ellipse at 20% 10%, rgba(96,165,250,0.06), transparent 10%),
+                  radial-gradient(ellipse at 80% 90%, rgba(125,211,252,0.04), transparent 20%),
+                  linear-gradient(120deg, rgba(7,18,39,0.9), rgba(5,13,28,0.95));
+      mix-blend-mode: screen;
+      animation: bgShift 12s linear infinite;
+    }
+    @keyframes bgShift {
+      0% { filter: hue-rotate(0deg) saturate(1); transform: scale(1); }
+      50% { filter: hue-rotate(30deg) saturate(1.1); transform: scale(1.02); }
+      100% { filter: hue-rotate(0deg) saturate(1); transform: scale(1); }
+    }
+
+    /* decorative tetromino DOM pieces */
+    #decor-tetrominoes { position:absolute; inset:0; pointer-events:none; z-index:1; }
+    .decor-tetromino {
+      position: absolute;
+      width: 56px;
+      height: 56px;
+      opacity: 0.16;
+      transform-origin: center;
+      will-change: transform, opacity, left, top;
+      filter: blur(2px);
+      border-radius: 6px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.35), inset 0 0 12px rgba(255,255,255,0.02);
+    }
+
+    /* neon ring behind main card */
+    .neon-ring {
+      position: absolute;
+      inset: -40px;
+      border-radius: 18px;
+      box-shadow: 0 0 60px rgba(96,165,250,0.14), 0 0 140px rgba(125,211,252,0.06) inset;
+      z-index: 0;
+      pointer-events: none;
+      transition: opacity 0.4s;
+      opacity: 1;
+    }
+
+    /* CTA ripple */
+    .btn-cta { position: relative; overflow: hidden; }
+    .btn-cta .ripple {
+      position: absolute; border-radius: 50%; transform: scale(0);
+      background: rgba(255,255,255,0.18); animation: ripple 700ms linear;
+    }
+    @keyframes ripple { to { transform: scale(6); opacity: 0; } }
+
+    /* ensure main-card content above decorations */
+    .main-card, .main-card > * { position: relative; z-index: 2; }
+  </style>
+</head>
+<body>
+  <!-- Main landing screen -->
+  <div id="main-screen">
+    <!-- เพิ่ม canvas สำหรับ main particle (วางภายใน main-screen เพื่อวาดเอฟเฟกต์) -->
+    <canvas id="main-particles"></canvas>
+    <div class="main-bg-anim" aria-hidden="true"></div>
+    <div id="decor-tetrominoes" aria-hidden="true"></div>
+    <div class="neon-ring" aria-hidden="true"></div>
+    <div class="floating" style="left:6%; top:14%"></div>
+    <div class="floating two" style="right:6%; bottom:10%"></div>
+    <div class="floating three" style="left:40%; top:6%"></div>
+    <div class="main-card" role="dialog" aria-modal="true">
+      <div class="main-title">SUPER TETRIS</div>
+      <div class="main-sub">เรียงบล็อค สร้างคอมโบ พิชิต Highscore</div>
+      <div style="margin-bottom:14px" class="main-cta">
+        <button id="main-start" class="btn-cta">เริ่มเกม</button>
+        <button id="main-menu" class="btn-secondary">เมนู</button>
+      </div>
+      <div style="font-size:13px;color:#bfd7ff;opacity:0.9">กดปุ่ม "เริ่มเกม" เพื่อเข้าสู่หน้าถัดไป</div>
+    </div>
+  </div>
+
+  <!-- Splash / Landing overlay -->
+  <div id="splash" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:1200;background:linear-gradient(180deg,rgba(0,0,0,0.55),rgba(0,0,0,0.75));">
+    <div style="background:linear-gradient(180deg,#111,#1b1b2f);padding:28px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);min-width:320px;text-align:center;color:#fff;box-shadow:0 10px 40px rgba(0,0,0,0.6);">
+      <h1 style="margin-bottom:8px;font-size:28px;letter-spacing:1px;">TETRIS</h1>
+      <p style="opacity:0.9;margin-bottom:16px">ยินดีต้อนรับ — แตะเริ่มเพื่อเล่นเกม</p>
+      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:12px">
+        <button id="splash-start" style="padding:10px 16px;border-radius:8px;border:0;background:linear-gradient(90deg,#ffd166,#ff7b7b);color:#000;font-weight:700;cursor:pointer">เริ่มเลย</button>
+        <button id="splash-skip" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#fff;cursor:pointer">ไปที่เมนู</button>
+      </div>
+      <small style="opacity:0.7;display:block">กด Esc เพื่อปิด</small>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="game-board">
+      <canvas id="tetris-canvas"></canvas>
+    </div>
+    <div class="info-panel">
+      <div class="info-box">
+        <h3>Score</h3>
+        <div class="info-value" id="score">0</div>
+      </div>
+      <div class="info-box">
+        <h3>Level & Lines</h3>
+        <div class="stats-box">
+          <div class="stat-item">
+            <small>Level</small>
+            <strong id="level">1</strong>
+          </div>
+          <div class="stat-item">
+            <small>Lines</small>
+            <strong id="lines">0</strong>
+          </div>
+          <div class="stat-item">
+            <small>Combo</small>
+            <strong id="combo">0</strong>
+          </div>
+        </div>
+      </div>
+      <div class="info-box">
+        <h3>Next Piece</h3>
+        <canvas id="next-canvas" style="width: 100%; height: 100px; background: #0f172a; border-radius: 4px;"></canvas>
+      </div>
+      <div class="controls">
+        <button class="btn" id="start-btn">Start Game</button>
+        <button class="btn" id="pause-btn">Pause</button>
+        <button class="btn" id="reset-btn">Reset</button>
+        <button class="btn" id="help-btn" style="background:linear-gradient(90deg,#ffd166,#ff7b7b);">วิธีเล่น</button>
+        <button class="btn" id="settings-btn" style="background:linear-gradient(90deg,#7dd3fc,#60a5fa);">ตั้งค่า</button>
+        <button class="btn" id="home-btn">กลับหน้าหลัก</button>
+      </div>
+      <div class="controls-help">
+        <strong>⌨️ Controls:</strong><br>
+        ← → : Move<br>
+        ↑ : Rotate<br>
+        ↓ : Drop<br>
+        Space : Hard Drop
+      </div>
+    </div>
+  </div>
+
+  <!-- เพิ่ม overlays: Menu / Tutorial / Tips / Settings (ไม่แก้ระบบเกม) -->
+  <div id="menu-overlay" class="overlay-panel" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="margin:0">เมนู</h3>
+        <button class="modal-close" data-close="menu-overlay">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>เลือกเมนูที่ต้องการ</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <button id="open-tutorial" class="small-btn">วิธีเล่น</button>
+          <button id="open-tips" class="small-btn">ทริค</button>
+          <button id="open-settings" class="small-btn">ตั้งค่า</button>
+          <button id="close-menu" class="link-btn">กลับไปเล่น</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tutorial-overlay" class="overlay-panel" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="margin:0">วิธีเล่น (Tutorial)</h3>
+        <button class="modal-close" data-close="tutorial-overlay">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>พื้นฐานการเล่น Tetris:</p>
+        <ul>
+          <li>← → : เลื่อนบล็อก</li>
+          <li>↑ : หมุนบล็อก</li>
+          <li>↓ : ปล่อยลงช้า</li>
+          <li>Space : ปล่อยลงทันที (Hard Drop)</li>
+        </ul>
+        <p>เคล็ดลับ: ใช้ Ghost piece เพื่อวางตำแหน่งได้แม่นยำ</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="tips-overlay" class="overlay-panel" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="margin:0">ทริค</h3>
+        <button class="modal-close" data-close="tips-overlay">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>ทริคสั้น ๆ เพื่อเพิ่มคะแนน:</p>
+        <ul>
+          <li>เก็บพื้นที่ให้เรียบเพื่อเตรียม Tetris (4 แถวพร้อมกัน)</li>
+          <li>อย่าปิดช่องด้านข้างที่สามารถใช้ hard-drop ได้</li>
+          <li>ใช้ combo ต่อเนื่องเพื่อบูสคะแนน (combo เพิ่ม multiplier)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings-overlay" class="overlay-panel" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="margin:0">การตั้งค่า</h3>
+        <button class="modal-close" data-close="settings-overlay">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>เสียง</p>
+        <div class="settings-row">
+          <label style="min-width:70px">Volume</label>
+          <input id="audio-volume" class="slider" type="range" min="0" max="1" step="0.01">
+          <button id="audio-mute" class="link-btn">Mute</button>
+        </div>
+        <p style="margin-top:12px;font-size:13px;color:#93c5fd">การตั้งค่านี้จะบันทึกและใช้กับเสียง HORN/Effects</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tetris Game Implementation
+    const canvas = document.getElementById('tetris-canvas');
+    const ctx = canvas.getContext('2d');
+    const nextCanvas = document.getElementById('next-canvas');
+    const nextCtx = nextCanvas.getContext('2d');
+
+    // Game constants
+    const COLS = 10;
+    const ROWS = 20;
+    const BLOCK_SIZE = 40;
+    const MAX_PARTICLES = 100; // จำกัดอนุภาค
+    const COLORS = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffa502', '#ff7675', '#a29bfe', '#fd79a8'];
+    const SHAPES = [
+      [[1,1,1,1]],
+      [[1,1],[1,1]],
+      [[0,1,0],[1,1,1]],
+      [[0,1,1],[1,1,0]],
+      [[1,1,0],[0,1,1]],
+      [[1,0,0],[1,1,1]],
+      [[0,0,1],[1,1,1]]
+    ];
+
+    // Game state
+    let board = [];
+    let currentPiece = null;
+    let nextPiece = null;
+    let score = 0;
+    let lines = 0;
+    let level = 1;
+    let combo = 0;
+    let gameRunning = false;
+    let gamePaused = false;
+    let dropCounter = 0;
+    let dropInterval = 1000;
+    let particles = [];
+    let linesClearingAnimation = [];
+    let fps = 60;
+    let fpsCounter = 0;
+    let lastFpsTime = Date.now();
+
+    // Initialize game board
+    function initBoard() {
+      board = Array(ROWS).fill(null).map(() => Array(COLS).fill(0));
+    }
+
+    // Create new piece
+    function createPiece() {
+      const shapeIndex = Math.floor(Math.random() * SHAPES.length);
+      return {
+        shape: SHAPES[shapeIndex],
+        color: COLORS[shapeIndex],
+        x: Math.floor(COLS / 2) - 1,
+        y: 0
+      };
+    }
+
+    // Draw ghost piece (where piece will land)
+    function drawGhost() {
+      if (!currentPiece) return;
+      const ghostPiece = {
+        shape: currentPiece.shape,
+        color: currentPiece.color,
+        x: currentPiece.x,
+        y: currentPiece.y
+      };
+      // หา lowest position ที่ชิ้นสามารถลงไป
+      let maxIterations = ROWS; // ป้องกัน infinite loop
+     while (maxIterations-- > 0 && canMove(ghostPiece, 0, 1)) {
+        ghostPiece.y++;
+      }
+      ctx.globalAlpha = 0.3;
+      for (let r = 0; r < ghostPiece.shape.length; r++) {
+        for (let c = 0; c < ghostPiece.shape[r].length; c++) {
+          if (ghostPiece.shape[r][c]) {
+            ctx.fillStyle = ghostPiece.color;
+            ctx.fillRect(
+              (ghostPiece.x + c) * BLOCK_SIZE + 1,
+              (ghostPiece.y + r) * BLOCK_SIZE + 1,
+              BLOCK_SIZE - 2,
+              BLOCK_SIZE - 2
+            );
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Draw the board and pieces
+    function draw() {
+      // Clear canvas
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw animated background
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.05)';
+      for (let i = 0; i < 5; i++) {
+        ctx.fillRect(0, i * 120, canvas.width, 1);
+      }
+
+      // Draw grid
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.1)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= COLS; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * BLOCK_SIZE, 0);
+        ctx.lineTo(i * BLOCK_SIZE, ROWS * BLOCK_SIZE);
+        ctx.stroke();
+      }
+      for (let i = 0; i <= ROWS; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, i * BLOCK_SIZE);
+        ctx.lineTo(COLS * BLOCK_SIZE, i * BLOCK_SIZE);
+        ctx.stroke();
+      }
+
+      // Draw board blocks - optimize เฉพาะบล็อกที่มี
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (board[r][c]) {
+            drawBlock(c, r, board[r][c], false);
+          }
+        }
+      }
+
+      // Draw ghost piece
+      drawGhost();
+
+      // Draw current piece
+      if (currentPiece) {
+        ctx.globalAlpha = 0.9;
+        for (let r = 0; r < currentPiece.shape.length; r++) {
+          for (let c = 0; c < currentPiece.shape[r].length; c++) {
+            if (currentPiece.shape[r][c]) {
+              drawBlock(currentPiece.x + c, currentPiece.y + r, currentPiece.color, true);
+            }
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // Draw particles - จำกัดจำนวน
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life -= 0.02;
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+        } else {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.1;
+          ctx.fillStyle = `rgba(${p.color}, ${p.life})`;
+          ctx.fillRect(p.x, p.y, 6, 6);
+        }
+      }
+
+     // Draw FPS counter
+     fpsCounter++;
+     const now = Date.now();
+     if (now - lastFpsTime >= 1000) {
+       fps = fpsCounter;
+       fpsCounter = 0;
+       lastFpsTime = now;
+     }
+     ctx.fillStyle = '#7dd3fc'; // FPS color changed from yellow to cyan
+     ctx.font = 'bold 12px Arial';
+     ctx.fillText(`FPS: ${fps}`, 10, canvas.height - 10);
+    }
+
+    function drawBlock(x, y, color, isActive) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x * BLOCK_SIZE + 1, y * BLOCK_SIZE + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+      if (isActive) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      } else {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      }
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x * BLOCK_SIZE + 1, y * BLOCK_SIZE + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+    }
+
+    // Draw next piece preview
+    function drawNext() {
+      nextCtx.fillStyle = '#0f172a';
+      nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+      
+      if (nextPiece) {
+        const offsetX = (4 - nextPiece.shape[0].length) / 2;
+        const offsetY = (2 - nextPiece.shape.length) / 2;
+        nextCtx.globalAlpha = 0.8;
+        for (let r = 0; r < nextPiece.shape.length; r++) {
+          for (let c = 0; c < nextPiece.shape[r].length; c++) {
+            if (nextPiece.shape[r][c]) {
+              nextCtx.fillStyle = nextPiece.color;
+              const x = (offsetX + c) * 20 + 5;
+              const y = (offsetY + r) * 20 + 20;
+              nextCtx.fillRect(x + 1, y + 1, 18, 18);
+              nextCtx.strokeStyle = 'rgba(255,255,255,0.3)';
+              nextCtx.lineWidth = 1;
+              nextCtx.strokeRect(x + 1, y + 1, 18, 18);
+            }
+          }
+        }
+        nextCtx.globalAlpha = 1;
+      }
+    }
+
+    // Check collision
+    function canMove(piece, dx, dy) {
+      for (let r = 0; r < piece.shape.length; r++) {
+        for (let c = 0; c < piece.shape[r].length; c++) {
+          if (piece.shape[r][c]) {
+            const newX = piece.x + c + dx;
+            const newY = piece.y + r + dy;
+             // ตรวจสอบขอบซ้ายขวา
+            if (newX < 0 || newX >= COLS) return false;
+             // ตรวจสอบขอบบน (อนุญาตให้มาจากบน)
+             if (newY < 0) return false;
+             // ตรวจสอบขอบล่าง
+            if (newY >= ROWS) return false;
+             // ตรวจสอบ collision กับ board
+            if (board[newY] && board[newY][newX]) return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function lockPiece() {
+      for (let r = 0; r < currentPiece.shape.length; r++) {
+        for (let c = 0; c < currentPiece.shape[r].length; c++) {
+          if (currentPiece.shape[r][c]) {
+            const y = currentPiece.y + r;
+            const x = currentPiece.x + c;
+            if (y >= 0) {
+              board[y][x] = currentPiece.color;
+            }
+          }
+        }
+      }
+      clearLines();
+      currentPiece = nextPiece;
+      nextPiece = createPiece();
+      
+      if (!canMove(currentPiece, 0, 0)) {
+        endGame();
+      }
+    }
+
+    function clearLines() {
+      let linesCleared = 0;
+      const clearedRows = [];
+     // หา rows ที่เต็ม
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r].every(cell => cell !== 0)) {
+          clearedRows.push(r);
+          linesCleared++;
+        }
+      }
+      
+      if (linesCleared > 0) {
+        // Particle explosion - จำกัดจำนวนอนุภาค
+        for (let row of clearedRows) {
+          for (let c = 0; c < COLS; c++) {
+            const color = board[row][c];
+            if (color && particles.length < MAX_PARTICLES) {
+              const rgb = hexToRgb(color);
+              for (let i = 0; i < 5 && particles.length < MAX_PARTICLES; i++) {
+                particles.push({
+                  x: c * BLOCK_SIZE + BLOCK_SIZE / 2,
+                  y: row * BLOCK_SIZE + BLOCK_SIZE / 2,
+                  vx: (Math.random() - 0.5) * 8,
+                  vy: (Math.random() - 0.5) * 8 - 2,
+                  life: 1,
+                  color: rgb
+                });
+              }
+            }
+          }
+        }
+
+        // ลบบรรทัดที่เต็มจากมากที่สุดลงมา (เพื่อไม่ให้ index สับสน)
+        // เรียง clearedRows จากมากไปน้อย
+        clearedRows.sort((a, b) => b - a);
+        for (let row of clearedRows) {
+          board.splice(row, 1);
+        }
+        // เพิ่มบรรทัดว่างลงบน
+        for (let i = 0; i < linesCleared; i++) {
+          board.unshift(Array(COLS).fill(0));
+        }
+
+        lines += linesCleared;
+        combo++;
+        score += linesCleared * linesCleared * 100 * combo;
+        level = Math.floor(lines / 10) + 1;
+        dropInterval = Math.max(100, 1000 - (level - 1) * 50);
+        updateUI();
+      } else {
+        combo = 0;
+      }
+    }
+
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? `${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(result[3], 16)}` : '255,255,255';
+    }
+
+    function rotatePiece(piece) {
+      const rotated = [];
+      const h = piece.shape.length;
+      const w = piece.shape[0].length;
+      for (let c = 0; c < w; c++) {
+        const row = [];
+        for (let r = h - 1; r >= 0; r--) {
+          row.push(piece.shape[r][c]);
+        }
+        rotated.push(row);
+      }
+     // สร้าง shallow copy ของ piece
+     const newPiece = {
+       shape: rotated,
+       color: piece.color,
+       x: piece.x,
+       y: piece.y
+     };
+      if (canMove(newPiece, 0, 0)) {
+        piece.shape = rotated;
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('score').textContent = score;
+      document.getElementById('level').textContent = level;
+      document.getElementById('lines').textContent = lines;
+      document.getElementById('combo').textContent = combo;
+    }
+
+    function endGame() {
+      gameRunning = false;
+      document.getElementById('start-btn').textContent = 'Game Over!';
+      document.getElementById('start-btn').style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+      // ใช้ modal แทน alert เพื่อไม่บล็อค game
+      showGameOverModal();
+    }
+
+   function showGameOverModal() {
+     const modal = document.createElement('div');
+     modal.style.cssText = `
+       position: fixed;
+       inset: 0;
+       background: rgba(0,0,0,0.8);
+       display: flex;
+       align-items: center;
+       justify-content: center;
+       z-index: 1000;
+       backdrop-filter: blur(5px);
+     `;
+     
+     const card = document.createElement('div');
+     card.style.cssText = `
+       background: linear-gradient(135deg, #1e3a8a 0%, #1f2937 100%);
+       padding: 30px;
+       border-radius: 12px;
+       border: 2px solid #3b82f6;
+       color: white;
+       text-align: center;
+       max-width: 400px;
+       animation: slideUp 0.3s ease-out;
+     `;
+     
+     card.innerHTML = `
+       <h2 style="color: #fbbf24; margin-bottom: 20px; font-size: 28px;">🎮 Game Over!</h2>
+       <div style="margin: 15px 0; font-size: 18px;">
+         <p><strong>Score:</strong> <span style="color: #7dd3fc;">${score}</span></p>
+         <p><strong>Level:</strong> <span style="color: #7dd3fc;">${level}</span></p>
+         <p><strong>Lines:</strong> <span style="color: #7dd3fc;">${lines}</span></p>
+         <p><strong>Combo:</strong> <span style="color: #7dd3fc;">${combo}</span></p>
+       </div>
+       <button id="close-modal" style="
+         margin-top: 20px;
+         padding: 12px 24px;
+         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+         color: white;
+         border: none;
+         border-radius: 6px;
+         cursor: pointer;
+         font-weight: bold;
+         font-size: 16px;
+       ">OK</button>
+     `;
+     
+     modal.appendChild(card);
+     document.body.appendChild(modal);
+     
+     document.getElementById('close-modal').addEventListener('click', () => {
+       modal.remove();
+     });
+   }
+
+    function gameLoop(timestamp) {
+      dropCounter += timestamp - (gameLoop.lastTime || timestamp);
+      gameLoop.lastTime = timestamp;
+
+      if (gameRunning && !gamePaused) {
+        if (dropCounter > dropInterval) {
+          if (canMove(currentPiece, 0, 1)) {
+            currentPiece.y++;
+          } else {
+             // ชิ้นไม่สามารถลงได้ -> lock it
+            lockPiece();
+          }
+          dropCounter = 0;
+        }
+      }
+
+      draw();
+      drawNext();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // UI overlay helpers
+    function showOverlay(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.add('active');
+      el.setAttribute('aria-hidden', 'false');
+    }
+    function hideOverlay(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.remove('active');
+      el.setAttribute('aria-hidden', 'true');
+    }
+
+    // Hook overlay buttons
+    document.addEventListener('click', (e) => {
+      const t = e.target;
+      if (t && t.dataset && t.dataset.close) hideOverlay(t.dataset.close);
+    });
+
+    // menu links
+    const helpBtn = document.getElementById('help-btn');
+    const settingsBtn = document.getElementById('settings-btn');
+    const splashSkipBtn = document.getElementById('splash-skip');
+    if (helpBtn) helpBtn.addEventListener('click', ()=> showOverlay('tutorial-overlay'));
+    if (settingsBtn) settingsBtn.addEventListener('click', ()=> showOverlay('settings-overlay'));
+    if (splashSkipBtn) splashSkipBtn.addEventListener('click', ()=> showOverlay('menu-overlay'));
+
+    // Links inside menu-overlay
+    const openTutorial = document.getElementById('open-tutorial');
+    const openTips = document.getElementById('open-tips');
+    const openSettings = document.getElementById('open-settings');
+    const closeMenu = document.getElementById('close-menu');
+    if (openTutorial) openTutorial.addEventListener('click', ()=> { hideOverlay('menu-overlay'); showOverlay('tutorial-overlay'); });
+    if (openTips) openTips.addEventListener('click', ()=> { hideOverlay('menu-overlay'); showOverlay('tips-overlay'); });
+    if (openSettings) openSettings.addEventListener('click', ()=> { hideOverlay('menu-overlay'); showOverlay('settings-overlay'); });
+    if (closeMenu) closeMenu.addEventListener('click', ()=> hideOverlay('menu-overlay'));
+
+    // Volume settings (store in localStorage)
+    const volumeEl = document.getElementById('audio-volume');
+    const muteEl = document.getElementById('audio-mute');
+    const AUDIO_KEY = 'tetris-audio-volume';
+    let audioVolume = parseFloat(localStorage.getItem(AUDIO_KEY) || '0.8');
+    if (volumeEl) { volumeEl.value = audioVolume; volumeEl.addEventListener('input', (e)=> {
+      audioVolume = Number(e.target.value); localStorage.setItem(AUDIO_KEY, String(audioVolume));
+    }); }
+    if (muteEl) { muteEl.addEventListener('click', ()=> {
+      audioVolume = audioVolume > 0 ? 0 : 0.8;
+      if (volumeEl) volumeEl.value = audioVolume;
+      localStorage.setItem(AUDIO_KEY, String(audioVolume));
+    }); }
+
+    // Use audioVolume in sound generation (audioCtx exists earlier in file for horn)
+    // When creating Gain nodes for sounds, use gain.gain.setValueAtTime(audioVolume, audioCtx.currentTime)
+    // (existing sound code uses audioCtx; this variable will affect those sounds)
+
+    // Controls
+    document.addEventListener('keydown', (e) => {
+      if (!gameRunning || gamePaused) return;
+      
+      switch(e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (canMove(currentPiece, -1, 0)) currentPiece.x--;
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (canMove(currentPiece, 1, 0)) currentPiece.x++;
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          if (canMove(currentPiece, 0, 1)) currentPiece.y++;
+          else lockPiece();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          rotatePiece(currentPiece);
+          break;
+        case ' ':
+          e.preventDefault();
+          while (canMove(currentPiece, 0, 1)) {
+            currentPiece.y++;
+          }
+          lockPiece();
+          break;
+      }
+    });
+
+    // Buttons
+    document.getElementById('start-btn').addEventListener('click', () => {
+      if (!gameRunning) {
+        initBoard();
+        currentPiece = createPiece();
+        nextPiece = createPiece();
+        score = 0;
+        lines = 0;
+        level = 1;
+        combo = 0;
+        dropInterval = 1000;
+        gameRunning = true;
+        gamePaused = false;
+        particles = [];
+        fps = 60;
+        fpsCounter = 0;
+        lastFpsTime = Date.now();
+        document.getElementById('start-btn').textContent = 'Playing...';
+        document.getElementById('start-btn').style.background = '';
+        updateUI();
+      }
+    });
+
+    document.getElementById('pause-btn').addEventListener('click', () => {
+      if (gameRunning) {
+        gamePaused = !gamePaused;
+        document.getElementById('pause-btn').textContent = gamePaused ? 'Resume' : 'Pause';
+      }
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      gameRunning = false;
+      gamePaused = false;
+      initBoard();
+      score = 0;
+      lines = 0;
+      level = 1;
+      combo = 0;
+      dropInterval = 1000;
+      particles = [];
+      document.getElementById('start-btn').textContent = 'Start Game';
+      document.getElementById('start-btn').style.background = '';
+      document.getElementById('pause-btn').textContent = 'Pause';
+      updateUI();
+      draw();
+      drawNext();
+    });
+
+    // Main screen wiring
+    (function(){
+      const main = document.getElementById('main-screen');
+      const mainStart = document.getElementById('main-start');
+      const mainMenuBtn = document.getElementById('main-menu');
+      const splash = document.getElementById('splash');
+      const startBtn = document.getElementById('start-btn');
+      function hideMain() { if (main) main.style.display = 'none'; }
+      function showSplash() { if (splash) splash.style.display = 'flex'; }
+      if (mainStart) mainStart.addEventListener('click', ()=>{
+        hideMain();
+        // show splash overlay (user can confirm/start) or start directly:
+        showSplash();
+      });
+      if (mainMenuBtn) mainMenuBtn.addEventListener('click', ()=>{
+        hideMain();
+        showOverlay('menu-overlay');
+      });
+      // Allow Escape to close main-screen
+      window.addEventListener('keydown', (e)=>{
+        if (e.key === 'Escape' && main && main.style.display !== 'none') {
+          hideMain();
+        }
+      });
+    })();
+
+    // Splash wiring: ซ่อน splash แล้ว trigger ปุ่ม start เดิม
+    (function(){
+      const splash = document.getElementById('splash');
+      const splashStart = document.getElementById('splash-start');
+      const splashSkip = document.getElementById('splash-skip');
+      const startBtn = document.getElementById('start-btn');
+      function hideSplash() { if (splash) splash.style.display = 'none'; }
+      if (splashStart) splashStart.addEventListener('click', ()=>{
+        hideSplash();
+        // เรียก logic start ของเกม (re-use handler)
+        if (startBtn) startBtn.click();
+      });
+      if (splashSkip) splashSkip.addEventListener('click', ()=> { hideSplash(); /* เปิดเมนู/ให้ผู้ใช้กด Start เอง */ });
+      window.addEventListener('keydown', (e)=>{
+        if (e.key === 'Escape' && splash && splash.style.display !== 'none') hideSplash();
+      });
+    })();
+
+    /* เพิ่ม main-screen particle animation (lightweight) */
+    (function(){
+      const canvas = document.getElementById('main-particles');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      function resize(){ canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
+      resize(); window.addEventListener('resize', resize);
+      const particles = [];
+      for (let i=0;i<40;i++){
+        particles.push({
+          x: Math.random()*canvas.width,
+          y: Math.random()*canvas.height,
+          r: 2+Math.random()*8,
+          vx: (Math.random()-0.5)*0.3,
+          vy: -0.2 - Math.random()*0.6,
+          alpha: 0.06 + Math.random()*0.12,
+          hue: Math.floor(180 + Math.random()*180)
+        });
+      }
+      let running = true;
+      function anim(time){
+        if (!running) return;
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        for (const p of particles){
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.y + p.r < -20) { p.y = canvas.height + 20; p.x = Math.random()*canvas.width; }
+          ctx.fillStyle = `hsla(${p.hue}, 80%, 65%, ${p.alpha})`;
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, p.r*1.2, p.r, 0, 0, Math.PI*2);
+          ctx.fill();
+        }
+        requestAnimationFrame(anim);
+      }
+      requestAnimationFrame(anim);
+
+      // expose control to stop/start when hiding/showing main
+      window.__mainParticles = { start: ()=>{ running=true; requestAnimationFrame(anim); }, stop: ()=>{ running=false; } };
+    })();
+
+    /* ปุ่ม "กลับหน้าหลัก" ในหน้าท์เกม */
+    (function(){
+      const homeBtn = document.getElementById('home-btn');
+      const mainScreen = document.getElementById('main-screen');
+      const splash = document.getElementById('splash');
+      if (!homeBtn) return;
+      homeBtn.addEventListener('click', ()=>{
+        // Pause/stop game (UI only) and show main-screen
+        gamePaused = true;
+        gameRunning = false;
+        // hide splash if accidentally open
+        if (splash) splash.style.display = 'none';
+        if (mainScreen) {
+          mainScreen.style.display = 'flex';
+          // start main particle anim
+          if (window.__mainParticles && window.__mainParticles.start) window.__mainParticles.start();
+        }
+      });
+    })();
+
+    /* เมื่อย้ายจาก main-screen ไป splash/เริ่ม ให้หยุด particle */
+    (function(){
+      const mainStart = document.getElementById('main-start');
+      const mainScreen = document.getElementById('main-screen');
+      const splash = document.getElementById('splash');
+      if (mainStart){
+        mainStart.addEventListener('click', ()=>{
+          // stop main particle loop to save CPU while in-splash/game
+          if (window.__mainParticles && window.__mainParticles.stop) window.__mainParticles.stop();
+          if (mainScreen) mainScreen.style.display = 'none';
+          if (splash) splash.style.display = 'flex';
+        });
+      }
+      // if menu pressed, also stop particles
+      const mainMenuBtn = document.getElementById('main-menu');
+      if (mainMenuBtn) mainMenuBtn.addEventListener('click', ()=>{
+        if (window.__mainParticles && window.__mainParticles.stop) window.__mainParticles.stop();
+        if (mainScreen) mainScreen.style.display = 'none';
+        showOverlay('menu-overlay');
+      });
+    })();
+
+    // Initialize
+    canvas.width = COLS * BLOCK_SIZE;
+    canvas.height = ROWS * BLOCK_SIZE;
+    nextCanvas.width = 150;
+    nextCanvas.height = 100;
+    initBoard();
+    updateUI();
+    draw();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
